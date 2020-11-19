@@ -1,7 +1,9 @@
 'use strict';
-let cryptoUtils = require('bigint-crypto-utils');
 
-class my_rsa{
+import * as cryptoUtils from 'bigint-crypto-utils';
+
+
+export default class MyRsa {
 
     constructor() {
         this.publicKey = {};
@@ -26,13 +28,13 @@ class my_rsa{
             //Let's check if it is a coprime
             if (cryptoUtils.gcd(this.publicKey.n, this.publicKey.e) !== BigInt(1)) {
                 console.log('Restarting RSA initialization: e and n are not coprime');
-                return new my_rsa();
+                return new MyRsa();
             }
 
             // Check that e and phi are coprime
             if(cryptoUtils.gcd(phi, this.publicKey.e) !== BigInt(1)){
                 console.log('Restarting RSA initialization: e and phi are not coprime');
-                return new my_rsa();
+                return new MyRsa();
             }
 
             //Calculate d=e^(-1) mod phi(n)
@@ -194,4 +196,3 @@ class my_rsa{
         return cryptoUtils.primeSync(1024,3);
     }
 }
-module.exports = my_rsa;
