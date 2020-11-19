@@ -60,6 +60,10 @@ export default class MyRsa {
         return cryptoUtils.modPow(cypher, this.privateKey.d, this.publicKey.n);
     }
 
+    static decrypt(cypher, d, n){
+        return cryptoUtils.modPow(cypher, d, n);
+    }
+
     /**
      * Sign the message.
      * If message us less tha n.
