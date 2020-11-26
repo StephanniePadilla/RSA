@@ -6,42 +6,46 @@ import * as cryptoUtils from 'bigint-crypto-utils';
 export default class MyRsa {
 
     constructor() {
-        this.publicKey = {};
-        this.privateKey = {};
-
-        //Two distinct prime numbers -> Co-Primes
-        Promise.all([cryptoUtils.prime(1024, 5), cryptoUtils.prime(1024, 5)]).then((values)=>{
-            console.log('p & q generated')
-            let p = values[0];
-            let q = values[1];
-
-            // n = p * q
-            this.publicKey.n = p * q;
-            this.privateKey.n= this.publicKey.n;
-
-            //Calculate Totien function = (p-1)(q-1)
-            let phi = (p-BigInt(1))*(q-BigInt(1));
-
-            //"e" has to be coprime with phi
-            this.publicKey.e = BigInt(65537);
-
-            //Let's check if it is a coprime
-            if (cryptoUtils.gcd(this.publicKey.n, this.publicKey.e) !== BigInt(1)) {
-                console.log('Restarting RSA initialization: e and n are not coprime');
-                return new MyRsa();
-            }
-
-            // Check that e and phi are coprime
-            if(cryptoUtils.gcd(phi, this.publicKey.e) !== BigInt(1)){
-                console.log('Restarting RSA initialization: e and phi are not coprime');
-                return new MyRsa();
-            }
-
-            //Calculate d=e^(-1) mod phi(n)
-            this.privateKey.d = cryptoUtils.modInv(this.publicKey.e, phi);
-        })
+        this.publicKey = null;
+        this.privateKey = null;
     }
 
+    async generateKeys(bitLength) {
+        //Two distinct prime numbers -> Co-Primes
+        const values = await Promise.all([cryptoUtils.prime((bitLength >> 1) + 1), cryptoUtils.prime(bitLength >> 1)]);
+        console.log('p & q generated');
+        const p = values[0];
+        const q = values[1];
+
+        // n = p * q    
+        this.publicKey.n = p * q;
+        if (cryptoUtils.bitLength(this.publicKey.n) != bitLength) {
+            console.log(`Restarting RSA initialization: n doesn't have ${bitLength}`);
+            return new MyRsa();
+        }
+        this.privateKey.n = this.publicKey.n;
+
+        //Calculate Totien function = (p-1)(q-1)
+        let phi = (p - 1n) * (q - 1n);
+
+        //"e" has to be coprime with phi
+        this.publicKey.e = 65537n;
+
+        //Let's check if it is a coprime
+        if (cryptoUtils.gcd(this.publicKey.n, this.publicKey.e) !== 1n) {
+            console.log('Restarting RSA initialization: e and n are not coprime');
+            return new MyRsa();
+        }
+
+        // Check that e and phi are coprime
+        if (cryptoUtils.gcd(phi, this.publicKey.e) !== 1n) {
+            console.log('Restarting RSA initialization: e and phi are not coprime');
+            return new MyRsa();
+        }
+
+        //Calculate d=e^(-1) mod phi(n)
+        this.privateKey.d = cryptoUtils.modInv(this.publicKey.e, phi);
+    }
 
     /**
      * Decrypt the encrypted message
@@ -55,12 +59,12 @@ export default class MyRsa {
      * d : Private exponent
      * n : Public modulus
      */
-    decrypt(cypher){
+    decrypt(cypher) {
         this.checkLessThanN(cypher);
         return cryptoUtils.modPow(cypher, this.privateKey.d, this.publicKey.n);
     }
 
-    static decrypt(cypher, d, n){
+    static decrypt(cypher, d, n) {
         return cryptoUtils.modPow(cypher, d, n);
     }
 
@@ -76,7 +80,7 @@ export default class MyRsa {
      * d : Private exponent
      * n : Public modulus
      */
-    sign(message){
+    sign(message) {
         this.checkLessThanN(message);
         return cryptoUtils.modPow(message, this.privateKey.d, this.publicKey.n);
     }
@@ -93,12 +97,12 @@ export default class MyRsa {
      * e : Public exponent
      * n : Public modulus
      */
-    encrypt(message){
+    encrypt(message) {
         this.checkLessThanN(message);
         return cryptoUtils.modPow(message, this.publicKey.e, this.publicKey.n);
     }
 
-    static encrypt(message, e, n){
+    static encrypt(message, e, n) {
         return cryptoUtils.modPow(message, e, n);
     }
 
@@ -115,8 +119,8 @@ export default class MyRsa {
      * @returns {bigint}  The signature is correct if message = signature^e mod n
      *
      */
-    static verify(signature, e, n){
-        return  cryptoUtils.modPow(signature, e, n)
+    static verify(signature, e, n) {
+        return cryptoUtils.modPow(signature, e, n)
     }
 
     /**
@@ -133,10 +137,10 @@ export default class MyRsa {
      *
      *  r: blind factor  r ϵ Zn * such as gcd(r,n) = 1
      */
-    static blind(message, e, n){
+    static blind(message, e, n) {
         const r = this.generateRandomPrime();
 
-        if(!this.checkCoPrime(n, r)){
+        if (!this.checkCoPrime(n, r)) {
             console.log('The numbers: ', n, ' and ', r, ' are not coPrime');
             return this.blind(message, e, n);
         }
@@ -159,8 +163,8 @@ export default class MyRsa {
      * @returns {bigint}  Signature = cryptogram * r^-1 mod n
      * Inverse modular : r^(-1) mod (n)
      */
-    static unBlind(cryptogram, r, n){
-        let signature = (cryptogram * cryptoUtils.modInv(r,n)) % n;
+    static unBlind(cryptogram, r, n) {
+        let signature = (cryptogram * cryptoUtils.modInv(r, n)) % n;
         return BigInt(signature);
     }
 
@@ -173,7 +177,7 @@ export default class MyRsa {
      *
      * @returns {boolean}
      */
-    static checkCoPrime(number, otherNumber){
+    static checkCoPrime(number, otherNumber) {
         return cryptoUtils.gcd(number, otherNumber) === BigInt(1)
     }
 
@@ -185,8 +189,8 @@ export default class MyRsa {
      * @param {bigint} number: number to check
      *
      */
-    checkLessThanN(number){
-        if(number > this.publicKey.n){
+    checkLessThanN(number) {
+        if (number > this.publicKey.n) {
             throw 'The number does not meet the condition less than n';
         }
     }
@@ -197,6 +201,6 @@ export default class MyRsa {
      * @returns {bigint}  Random prime number
      */
     static generateRandomPrime() {
-        return cryptoUtils.primeSync(1024,3);
+        return cryptoUtils.primeSync(1024, 3);
     }
 }
