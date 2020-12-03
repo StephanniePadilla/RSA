@@ -1,9 +1,9 @@
 'use strict'
 
-const cryptoUtils = require ('bigint-crypto-utils');
+import * as cryptoUtils from 'bigint-crypto-utils';
 
 
-class MyRsa {
+export default class MyRsa {
 
     constructor() {
         this.publicKey = null;
@@ -204,5 +204,3 @@ class MyRsa {
         return cryptoUtils.primeSync(1024, 3);
     }
 }
-
-module .exports = MyRsa;
